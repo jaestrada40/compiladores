@@ -60,14 +60,30 @@ const simpleConcepts = [
   {icon:"✓",title:"Semántica",simple:"Comprueba que el programa tenga sentido.",example:"total + precio falla si precio no fue declarado."},
 ];
 
-const tokenize = (src:string) => src.match(/\b(?:let|if|else|while|return|int|float)\b|\d+(?:\.\d+)?|[A-Za-z_]\w*|==|!=|<=|>=|[+*/=;(){}<>-]/g)?.map((v) => ({v,t:/^(let|if|else|while|return|int|float)$/.test(v)?"KEYWORD":/^\d/.test(v)?"NUMBER":/^[A-Za-z_]/.test(v)?"IDENTIFIER":/^[;(){}]$/.test(v)?"DELIMITER":"OPERATOR"})) ?? [];
-
+function analyzeLexical(src:string){
+  const pattern=/\b(?:let|if|else|while|return|int|float)\b|\d+(?:\.\d+)?|[A-Za-z_]\w*|==|!=|<=|>=|[+*/=;(){}<>-]/g;
+  const tokens:{v:string;t:string}[]=[];
+  const errors:{text:string;position:number}[]=[];
+  let last=0;
+  for(const match of src.matchAll(pattern)){
+    const start=match.index ?? 0;
+    const gap=src.slice(last,start);
+    for(let i=0;i<gap.length;i++)if(!/\s/.test(gap[i]))errors.push({text:gap[i],position:last+i+1});
+    const v=match[0];
+    tokens.push({v,t:/^(let|if|else|while|return|int|float)$/.test(v)?"KEYWORD":/^\d/.test(v)?"NUMBER":/^[A-Za-z_]/.test(v)?"IDENTIFIER":/^[;(){}]$/.test(v)?"DELIMITER":"OPERATOR"});
+    last=start+v.length;
+  }
+  const tail=src.slice(last);
+  for(let i=0;i<tail.length;i++)if(!/\s/.test(tail[i]))errors.push({text:tail[i],position:last+i+1});
+  return {tokens,errors};
+}
 function LabWorkbench({labId}:{labId:string}) {
   const [source,setSource]=useState("let total = precio * 3 + 5;");
   const [regex,setRegex]=useState("^[a-zA-Z_][a-zA-Z0-9_]*$");
   const [sample,setSample]=useState("contador_2");
   const [binary,setBinary]=useState("1010");
-  const tokens=tokenize(source);
+  const lexical=analyzeLexical(source);
+  const tokens=lexical.tokens;
   const regexOk=useMemo(()=>{try{return new RegExp(regex).test(sample)}catch{return false}},[regex,sample]);
   const evenOnes=binary.split("").filter(x=>x==="1").length%2===0;
   const ast = source.replace(/^(?:let\s+)?\w+\s*=\s*/,"").replace(/;$/,"").trim();
@@ -79,7 +95,7 @@ function LabWorkbench({labId}:{labId:string}) {
   if(labId==="symbols") return <Workbench title="Inspector de tabla de símbolos" hint="Extrae identificadores del programa actual."><Editor source={source} setSource={setSource}/><table><thead><tr><th>Nombre</th><th>Categoría</th><th>Tipo</th><th>Ámbito</th></tr></thead><tbody>{[...new Set(tokens.filter(t=>t.t==="IDENTIFIER").map(t=>t.v))].map((id,i)=><tr key={id}><td>{id}</td><td>{i===0?"variable":"referencia"}</td><td>{/precio|total/.test(id)?"number":"inferido"}</td><td>global</td></tr>)}</tbody></table></Workbench>;
   if(labId==="ir") return <Workbench title="Generador de código de tres direcciones" hint="Los subárboles se convierten en temporales."><Editor source={source} setSource={setSource}/><pre className="output">{tac}</pre></Workbench>;
   if(labId==="pipeline") return <Workbench title="Pipeline completo" hint="Una misma entrada, seis representaciones."><Editor source={source} setSource={setSource}/><div className="pipeline">{[["1","Tokens",`${tokens.length} unidades`],["2","Parser","Asignación válida"],["3","AST",`Assign → ${ast}`],["4","Símbolos",`${new Set(tokens.filter(t=>t.t==="IDENTIFIER").map(t=>t.v)).size} identificadores`],["5","IR",tac.split("\n")[0]],["6","Destino","LOAD · MUL · ADD · STORE"]].map(x=><div key={x[0]}><b>{x[0]}</b><span>{x[1]}</span><small>{x[2]}</small></div>)}</div></Workbench>;
-  return <Workbench title="Tokenizador interactivo" hint="Escribe código CompilaMini y observa la clasificación léxica."><Editor source={source} setSource={setSource}/><div className="tokens">{tokens.map((t,i)=><div key={i}><code>{t.v}</code><span>{t.t}</span></div>)}</div></Workbench>;
+  return <Workbench title="Validador léxico y tokenizador" hint="Aquí compruebas si cada carácter puede convertirse en un token válido."><div className="lab-instructions"><b>¿Qué debes hacer?</b><ol><li>Escribe o modifica el código.</li><li>El resultado se actualiza automáticamente; no necesitas pulsar un botón.</li><li>Revisa el mensaje verde o rojo y luego observa las etiquetas de cada pieza.</li></ol></div><div className="example-actions"><span>Prueba rápida:</span><button onClick={()=>setSource("let x = 1;")}>Ejemplo válido</button><button onClick={()=>setSource("let x = $;")}>Ejemplo con error</button></div><Editor source={source} setSource={setSource}/><div className={`validation-result ${lexical.errors.length?"invalid":"valid"}`}><b>{lexical.errors.length?"✕ Error léxico encontrado":"✓ Análisis léxico válido"}</b><span>{lexical.errors.length?`No se reconoce ${lexical.errors.map(e=>`«${e.text}» en la posición ${e.position}`).join(", ")}. Corrige ese carácter.`:`Todos los caracteres fueron reconocidos y se formaron ${tokens.length} tokens.`}</span></div><div className="scope-note"><b>Importante:</b> este laboratorio valida las piezas del código, no su orden. Para detectar paréntesis desbalanceados o una estructura incorrecta usa <strong>Parser y AST</strong>.</div><div className="tokens">{tokens.map((t,i)=><div key={i}><code>{t.v}</code><span>{t.t}</span></div>)}</div><div className="token-help"><span><b>KEYWORD</b> palabra reservada</span><span><b>IDENTIFIER</b> nombre creado por ti</span><span><b>NUMBER</b> número</span><span><b>OPERATOR</b> operación</span><span><b>DELIMITER</b> separador</span></div></Workbench>;
 }
 
 function Editor({source,setSource}:{source:string,setSource:(s:string)=>void}){return <label>Código fuente<textarea value={source} onChange={e=>setSource(e.target.value)} spellCheck={false}/></label>}
