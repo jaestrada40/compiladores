@@ -11,6 +11,8 @@ test("CompilaLab renderiza la experiencia académica", async () => {
   assert.match(html, /CompilaLab/);
   assert.match(html, /Del código fuente/);
   assert.match(html, /21 semanas/);
-  assert.match(html, /Laboratorios/);
+  assert.match(html, /laboratorios/i);
+  assert.match(html, /Cuatro ideas, en palabras simples/);
+  assert.match(html, /Repaso y examen/);
   assert.doesNotMatch(html, /codex-preview/);
 });
