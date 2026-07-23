@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "CompilaLab — Laboratorio de Compiladores",
     description: "Curso interactivo de Compiladores 2026: 21 semanas, cuestionarios, progreso y laboratorios del lexer al código intermedio.",
-    icons:{icon:"/favicon.svg"},
+    icons:{icon:[{url:"/favicon.svg",type:"image/svg+xml"},{url:"/favicon.ico"}],shortcut:"/favicon.ico"},
     openGraph:{title:"CompilaLab",description:"Del código fuente a la máquina.",images:[image],locale:"es_GT",type:"website"},
     twitter:{card:"summary_large_image",title:"CompilaLab",description:"Del código fuente a la máquina.",images:[image]},
   };
